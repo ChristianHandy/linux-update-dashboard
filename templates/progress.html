@@ -1,0 +1,17 @@
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="/static/style.css">
+
+<div class="container">
+<h3>Update Progress</h3>
+
+<pre>
+{% for line in log %}
+{{ line }}
+{% endfor %}
+</pre>
+
+<p>Auto-refreshing…</p>
+</div>
+
+<meta http-equiv="refresh" content="2">
+

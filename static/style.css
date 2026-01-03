@@ -1,0 +1,38 @@
+body {
+  background:#0f172a;
+  color:#e5e7eb;
+  font-family:system-ui;
+  margin:0;
+}
+
+.container {
+  max-width:900px;
+  margin:auto;
+  padding:1rem;
+}
+
+.card {
+  background:#020617;
+  padding:1rem;
+  border-radius:10px;
+  margin-bottom:1rem;
+}
+
+.btn {
+  background:#2563eb;
+  color:white;
+  padding:.6rem 1rem;
+  border-radius:8px;
+  display:inline-block;
+}
+
+.status-online { color:#22c55e; }
+.status-offline { color:#ef4444; }
+
+pre {
+  background:black;
+  padding:1rem;
+  border-radius:10px;
+  overflow-x:auto;
+}
+
