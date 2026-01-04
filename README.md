@@ -1,12 +1,12 @@
 # Linux Management Dashboard
 
-A comprehensive web dashboard combining system update management and disk tools for Linux computers.
+A comprehensive Linux management tool providing web-based system administration, remote update management, and disk operations for Linux computers.
 
-> **Note:** This project merges functionality from two repositories:
+> **Note:** This project combines functionality from two repositories:
 > - [linux-update-dashboard](https://github.com/ChristianHandy/linux-update-dashboard) - Remote system update management
 > - [Disk_Tools](https://github.com/ChristianHandy/Disk_Tools) - Disk formatting and SMART monitoring
 >
-> Both tools are now accessible from a unified interface after logging in.
+> Both tools are now unified in a single management interface.
 
 ## Features
 

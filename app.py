@@ -105,7 +105,7 @@ def index():
 @app.route("/dashboard")
 @login_required
 def dashboard():
-    """Linux Update Dashboard"""
+    """System Update Manager"""
     hosts = load_hosts()
     history = json.load(open("history.json"))
     status = {n: is_online(h["host"], h["user"]) for n, h in hosts.items()}
