@@ -2,6 +2,12 @@
 
 A comprehensive web dashboard combining system update management and disk tools for Linux computers.
 
+> **Note:** This project merges functionality from two repositories:
+> - [linux-update-dashboard](https://github.com/ChristianHandy/linux-update-dashboard) - Remote system update management
+> - [Disk_Tools](https://github.com/ChristianHandy/Disk_Tools) - Disk formatting and SMART monitoring
+>
+> Both tools are now accessible from a unified interface after logging in.
+
 ## Features
 
 ### System Update Manager
@@ -29,6 +35,28 @@ A comprehensive web dashboard combining system update management and disk tools 
 4. Activate: `source venv/bin/activate`
 5. Install requirements: `pip install -r requirements.txt`
 6. Run: `python app.py` (requires sudo for disk management features)
+
+## Quick Start
+
+1. Start the application:
+   ```bash
+   # For system updates only (no sudo needed)
+   python3 app.py
+   
+   # For full features including disk management (requires sudo)
+   sudo python3 app.py
+   ```
+
+2. Open your browser to `http://localhost:5000`
+
+3. Login with default credentials:
+   - Username: `admin`
+   - Password: `password`
+   - **Important:** Change these credentials before exposing the dashboard publicly!
+
+4. From the main menu, choose:
+   - **System Update Manager** (`/dashboard`) - Manage remote Linux systems
+   - **Disk Management Tools** (`/disks`) - Format and test disks (requires sudo)
 
 ## Usage
 
