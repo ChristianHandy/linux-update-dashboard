@@ -334,7 +334,7 @@ def remove_remote(remote_id):
 # Task helpers (existing): get_task_status, get_task_action, stop_task, auto_mode_worker
 
 def get_task_status(op_id):
-    row = get_db().execute("SELECT status, progress FROM operations WHERE id=?)", (op_id,)).fetchone()
+    row = get_db().execute("SELECT status, progress FROM operations WHERE id=?", (op_id,)).fetchone()
     return (row['status'], row['progress']) if row else (None, None)
 
 def get_task_action(op_id):
