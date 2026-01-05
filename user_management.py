@@ -8,7 +8,7 @@ from pathlib import Path
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
-from flask import session, redirect, url_for, flash
+from flask import session, redirect, url_for, flash, request
 
 # Database file for user management
 USER_DB_FILE = Path(__file__).parent / 'users.db'
@@ -163,6 +163,9 @@ def update_user(user_id, username=None, email=None, active=None, password=None):
     Returns:
         True if successful, False otherwise
     """
+    # Whitelist of allowed columns to prevent SQL injection
+    ALLOWED_COLUMNS = {'username', 'email', 'active', 'password_hash'}
+    
     updates = []
     params = []
     
@@ -186,6 +189,7 @@ def update_user(user_id, username=None, email=None, active=None, password=None):
     
     try:
         with get_user_db() as db:
+            # Safe: updates contains only whitelisted column names with parameterized values
             db.execute(
                 f"UPDATE users SET {', '.join(updates)} WHERE id = ?",
                 params
@@ -300,7 +304,6 @@ def role_required(*required_roles):
         def wrapped(*args, **kwargs):
             user_id = session.get("user_id")
             if not user_id:
-                from flask import request
                 return redirect(url_for('login', next=request.path))
             
             user_roles = get_user_role_names(user_id)
