@@ -36,7 +36,36 @@ addon_mgr.load_addons()
 def inject_hooks():
     return dict(hook=lambda name, *args, **kwargs: addon_mgr.render_hooks(name, *args, **kwargs))
 
+# Template function for user context
+@app.context_processor
+def inject_user_context():
+    """Make user information available in all templates."""
+    user_id = session.get("user_id")
+    user_roles = []
+    is_admin = False
+    
+    if user_id:
+        user_roles = user_management.get_user_role_names(user_id)
+        is_admin = 'admin' in user_roles
+    
+    return dict(
+        current_user_id=user_id,
+        current_user_roles=user_roles,
+        is_admin=is_admin
+    )
+
 logs = {}
+
+def current_user_has_role(*roles):
+    """Check if the current logged-in user has any of the specified roles."""
+    user_id = session.get("user_id")
+    if not user_id:
+        return False
+    user_roles = user_management.get_user_role_names(user_id)
+    # Admin has access to everything
+    if 'admin' in user_roles:
+        return True
+    return any(role in user_roles for role in roles)
 
 def is_online(host, user):
     try:
@@ -136,10 +165,9 @@ def logout():
     return redirect(url_for('login'))
 
 @app.route("/index")
+@login_required
 def index():
     """Main menu/landing page showing both tools"""
-    if not session.get("login"):
-        return redirect("/")
     return render_template("index.html")
 
 @app.route("/dashboard")
@@ -154,6 +182,11 @@ def dashboard():
 @app.route("/update/<name>")
 @login_required
 def update(name):
+    # Require operator or admin role to perform updates
+    if session.get("user_id") and not current_user_has_role('operator', 'admin'):
+        flash('You need operator or admin role to perform system updates.')
+        return redirect(url_for('dashboard'))
+    
     hosts = load_hosts()
     logs[name] = []
     threading.Thread(
@@ -173,6 +206,11 @@ def progress(name):
 def manage_hosts():
     hosts = load_hosts()
     if request.method == "POST":
+        # Require operator or admin role to modify hosts
+        if session.get("user_id") and not current_user_has_role('operator', 'admin'):
+            flash('You need operator or admin role to manage hosts.')
+            return redirect(url_for('manage_hosts'))
+        
         # Add or update host via the add form
         name = request.form.get("name", "").strip()
         host = request.form.get("host", "").strip()
@@ -191,6 +229,11 @@ def edit_host(orig_name):
     if orig_name not in hosts:
         return redirect("/hosts")
     if request.method == "POST":
+        # Require operator or admin role to modify hosts
+        if session.get("user_id") and not current_user_has_role('operator', 'admin'):
+            flash('You need operator or admin role to manage hosts.')
+            return redirect(url_for('manage_hosts'))
+        
         new_name = request.form.get("name", "").strip()
         host = request.form.get("host", "").strip()
         user = request.form.get("user", "").strip()
@@ -208,6 +251,11 @@ def edit_host(orig_name):
 @app.route("/hosts/delete/<name>", methods=["POST"])
 @login_required
 def delete_host(name):
+    # Require operator or admin role to delete hosts
+    if session.get("user_id") and not current_user_has_role('operator', 'admin'):
+        flash('You need operator or admin role to delete hosts.')
+        return redirect(url_for('manage_hosts'))
+    
     hosts = load_hosts()
     if name in hosts:
         hosts.pop(name)
@@ -218,6 +266,11 @@ def delete_host(name):
 @app.route("/hosts/install_key/<name>", methods=["GET", "POST"])
 @login_required
 def install_key(name):
+    # Require operator or admin role to install keys
+    if session.get("user_id") and not current_user_has_role('operator', 'admin'):
+        flash('You need operator or admin role to install SSH keys.')
+        return redirect(url_for('manage_hosts'))
+    
     hosts = load_hosts()
     if name not in hosts:
         return redirect("/hosts")
@@ -291,6 +344,11 @@ def disks_index():
 @app.route("/disks/toggle_auto")
 @login_required
 def toggle_auto():
+    # Require operator or admin role to toggle automatic mode
+    if session.get("user_id") and not current_user_has_role('operator', 'admin'):
+        flash('You need operator or admin role to toggle automatic mode.')
+        return redirect(url_for('disks_index'))
+    
     disktool_core.auto_enabled = not disktool_core.auto_enabled
     flash(f"Automatic mode {'ON' if disktool_core.auto_enabled else 'OFF'}")
     return redirect(url_for('disks_index'))
@@ -304,6 +362,11 @@ def format_route(device):
         flash(f'Invalid device name: {e}')
         return redirect(url_for('disks_index'))
     if request.method == 'POST':
+        # Require operator or admin role to format disks
+        if session.get("user_id") and not current_user_has_role('operator', 'admin'):
+            flash('You need operator or admin role to format disks.')
+            return redirect(url_for('disks_index'))
+        
         fs = request.form.get('fs','ext4')
         if fs not in {'ext4', 'xfs', 'fat32'}:
             flash('Invalid filesystem type')
@@ -316,6 +379,11 @@ def format_route(device):
 @app.route("/disks/smart/start/<device>/<mode>")
 @login_required
 def smart_start_route(device, mode):
+    # Require operator or admin role to start SMART tests
+    if session.get("user_id") and not current_user_has_role('operator', 'admin'):
+        flash('You need operator or admin role to start SMART tests.')
+        return redirect(url_for('disks_index'))
+    
     try:
         device = disktool_core.sanitize_device_name(device)
     except ValueError as e:
@@ -359,6 +427,11 @@ def disk_history():
 @app.route("/disks/clear_history")
 @login_required
 def clear_disk_history():
+    # Require operator or admin role to clear history
+    if session.get("user_id") and not current_user_has_role('operator', 'admin'):
+        flash('You need operator or admin role to clear history.')
+        return redirect(url_for('disk_history'))
+    
     disktool_core.clear_history()
     flash('History cleared')
     return redirect(url_for('disk_history'))
@@ -379,6 +452,11 @@ def export_smart():
 @login_required
 def import_smart():
     if request.method == 'POST':
+        # Require operator or admin role to import data
+        if session.get("user_id") and not current_user_has_role('operator', 'admin'):
+            flash('You need operator or admin role to import SMART data.')
+            return redirect(url_for('disk_history'))
+        
         f = request.files['file']
         device = request.form.get('device', 'UNKNOWN')
         disktool_core.import_smart_data(f, device)
@@ -401,6 +479,11 @@ def task_status(op_id):
 @app.route("/disks/task/stop/<int:op_id>")
 @login_required
 def stop_task(op_id):
+    # Require operator or admin role to stop tasks
+    if session.get("user_id") and not current_user_has_role('operator', 'admin'):
+        flash('You need operator or admin role to stop tasks.')
+        return redirect(url_for('disk_history'))
+    
     disktool_core.stop_task(op_id)
     flash(f'Task {op_id} stopped')
     return redirect(url_for('disk_history'))
@@ -435,6 +518,11 @@ def render_plugin_page(plugin, device):
 @login_required
 def remotes():
     if request.method == 'POST':
+        # Require operator or admin role to add remotes
+        if session.get("user_id") and not current_user_has_role('operator', 'admin'):
+            flash('You need operator or admin role to add remotes.')
+            return redirect(url_for('remotes'))
+        
         name = request.form.get('name')
         host = request.form.get('host')
         port = int(request.form.get('port', 22))
@@ -447,6 +535,11 @@ def remotes():
 @app.route("/disks/remotes/delete/<int:rid>")
 @login_required
 def remotes_delete(rid):
+    # Require operator or admin role to delete remotes
+    if session.get("user_id") and not current_user_has_role('operator', 'admin'):
+        flash('You need operator or admin role to delete remotes.')
+        return redirect(url_for('remotes'))
+    
     disktool_core.remove_remote(rid)
     flash('Remote removed')
     return redirect(url_for('remotes'))
