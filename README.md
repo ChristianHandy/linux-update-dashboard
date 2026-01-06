@@ -22,10 +22,13 @@ A comprehensive web dashboard combining system update management and disk tools 
 
 ### System Update Manager
 - Trigger updates remotely on multiple Linux computers via SSH
+- **Automatic update scheduling** with configurable frequency (daily, weekly, monthly)
+- **Repository-only updates** - Update packages while preserving host configuration files
+- **Full system updates** - Complete updates including configuration files
 - Mobile-friendly UI
-- Update history tracking
+- Update history tracking with update type information
 - Online/offline host detection
-- Auto-scheduled updates
+- Update status notifications
 - SSH key management
 
 ### Disk Management Tools
@@ -253,6 +256,75 @@ Backup and restore hosts.json
   - cp hosts.json hosts.json.bak
 - Restore:
   - mv hosts.json.bak hosts.json
+
+## Automatic Update Configuration
+
+The Linux Management Dashboard now includes comprehensive automatic update controls accessible via the Update Settings page (`/update_settings`).
+
+### Accessing Update Settings
+1. Log in to the dashboard
+2. Navigate to the main menu (`/index`) or Update Dashboard (`/dashboard`)
+3. Click the "Update Settings" button
+4. Configure your automatic update preferences
+
+**Note:** Modifying update settings requires operator or admin role.
+
+### Configuration Options
+
+#### Enable/Disable Automatic Updates
+Toggle automatic updates on or off with a simple checkbox. When enabled, the system will automatically update all configured hosts at the specified frequency without manual intervention.
+
+#### Update Frequency
+Choose how often automatic updates should run:
+- **Daily** - Updates run every 24 hours (recommended for security-critical systems)
+- **Weekly** - Updates run every 7 days (balanced approach)
+- **Monthly** - Updates run every 30 days (suitable for stable production environments)
+
+#### Update Notifications
+Enable or disable update status notifications displayed on the dashboard.
+
+### Update Types
+
+The dashboard now supports two types of updates:
+
+#### Repository-Only Updates
+Click the **"Repo Update"** button (purple) on the dashboard to update packages from repositories while keeping host configuration files unchanged. This is ideal for:
+- Production systems where configuration stability is critical
+- Systems with custom configurations that should be preserved
+- Regular package updates without configuration changes
+
+**Technical details:**
+- Debian/Ubuntu: Uses `--force-confold` to keep existing config files
+- Fedora: Uses `--setopt=tsflags=noscripts` to preserve configurations
+- Arch Linux: Uses `--needed` flag to avoid reinstalling packages
+
+#### Full System Updates
+Click the **"Full Update"** button (blue) on the dashboard to perform complete system updates including configuration files. This performs:
+- Package updates from repositories
+- Configuration file updates (may overwrite local changes)
+- Complete system upgrade
+
+### Routes
+- Update settings page: `/update_settings`
+- Repository-only update: `/update_repo/<host_name>`
+- Full system update: `/update/<host_name>`
+- Update progress: `/progress/<host_name>`
+
+### Configuration Storage
+Update settings are stored in `update_settings.json` with the following structure:
+```json
+{
+  "automatic_updates_enabled": false,
+  "update_frequency": "daily",
+  "last_auto_update": null,
+  "notification_enabled": true
+}
+```
+
+### Dashboard Status Display
+The Update Dashboard displays the current automatic update status:
+- **Disabled**: Shows a neutral card indicating automatic updates are off
+- **Enabled**: Shows a green card with the configured frequency and last update time
 
 ## Security
 
