@@ -797,6 +797,10 @@ if __name__ == "__main__":
     disktool_core.init_db()
     # Start Disk Tools auto-mode worker
     threading.Thread(target=disktool_core.auto_mode_worker, daemon=True).start()
+    
+    # Configure automatic update scheduler
+    scheduler.configure_scheduler()
+    
     # Security: Disable debug mode in production
     debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
     app.run(host="0.0.0.0", port=5000, debug=debug_mode)

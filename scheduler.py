@@ -31,7 +31,14 @@ def scheduled_updates():
     if not settings.get("automatic_updates_enabled", False):
         return
     
-    hosts = json.load(open("hosts.json"))
+    # Load hosts with error handling
+    try:
+        with open("hosts.json", "r") as f:
+            hosts = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        # No hosts configured or file is corrupted
+        return
+    
     for name, h in hosts.items():
         run_update(h["host"], h["user"], name, [])
     

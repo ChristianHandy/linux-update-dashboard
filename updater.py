@@ -54,7 +54,13 @@ def run_update(host, user, name, log, repo_only=False):
 
         ssh.close()
 
-        history = json.load(open("history.json"))
+        # Load history with error handling
+        try:
+            with open("history.json", "r") as f:
+                history = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            history = []
+        
         update_type = "Repository-only update" if repo_only else "Full update"
         history.append({
             "host": name,
@@ -62,7 +68,9 @@ def run_update(host, user, name, log, repo_only=False):
             "status": "Success",
             "type": update_type
         })
-        json.dump(history, open("history.json", "w"), indent=2)
+        
+        with open("history.json", "w") as f:
+            json.dump(history, f, indent=2)
 
     except Exception as e:
         log.append(str(e))
