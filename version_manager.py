@@ -6,6 +6,8 @@ Handles checking for new dashboard versions from GitHub and managing update noti
 import json
 import os
 import time
+import shutil
+import subprocess
 import requests
 from datetime import datetime, timedelta
 
@@ -41,7 +43,6 @@ def save_version_data(data):
 def get_current_commit_sha():
     """Get the current commit SHA of the local repository"""
     try:
-        import subprocess
         result = subprocess.run(
             ["git", "rev-parse", "HEAD"],
             cwd=os.path.dirname(os.path.abspath(__file__)),
@@ -58,7 +59,6 @@ def get_current_commit_sha():
 def get_current_branch():
     """Get the current git branch"""
     try:
-        import subprocess
         result = subprocess.run(
             ["git", "rev-parse", "--abbrev-ref", "HEAD"],
             cwd=os.path.dirname(os.path.abspath(__file__)),
@@ -183,8 +183,6 @@ def perform_self_update(preserve_configs=True):
     Update the dashboard to the latest version while preserving configurations.
     Returns (success, message)
     """
-    import subprocess
-    
     try:
         repo_dir = os.path.dirname(os.path.abspath(__file__))
         
@@ -212,7 +210,6 @@ def perform_self_update(preserve_configs=True):
                 filepath = os.path.join(repo_dir, filename)
                 if os.path.exists(filepath):
                     backup_path = os.path.join(backup_dir, filename)
-                    import shutil
                     shutil.copy2(filepath, backup_path)
         
         # Fetch latest changes
@@ -248,11 +245,9 @@ def perform_self_update(preserve_configs=True):
                 backup_path = os.path.join(backup_dir, filename)
                 if os.path.exists(backup_path):
                     filepath = os.path.join(repo_dir, filename)
-                    import shutil
                     shutil.copy2(backup_path, filepath)
             
             # Clean up backup
-            import shutil
             shutil.rmtree(backup_dir, ignore_errors=True)
         
         # Update version data
