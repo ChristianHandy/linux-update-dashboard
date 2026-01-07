@@ -28,7 +28,7 @@ def test_plugin_manager_blueprint():
     try:
         from addons import plugin_manager
         assert hasattr(plugin_manager, 'blueprint'), "Blueprint not found"
-        assert plugin_manager.blueprint.url_prefix == '/pluginmanager', "Incorrect URL prefix"
+        assert plugin_manager.blueprint.url_prefix == '/disks/pluginmanager', "Incorrect URL prefix"
         print("✓ Plugin manager blueprint configured correctly")
         return True
     except Exception as e:

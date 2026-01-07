@@ -9,14 +9,14 @@ The `addons` directory could not be accessed through the website, preventing use
 - **Issue**: Plugin Manager template path was incorrect (`plugin_manager.html` instead of `disks/plugin_manager.html`)
 - **Fix**: Updated the template path in `addons/plugin_manager.py`
 - **Enhancement**: Added a "🔌 Plugin Manager" button to the disk tools interface (`/disks`)
-- **Result**: Plugin Manager is now accessible at `/pluginmanager/`
+- **Result**: Plugin Manager is now accessible at `/disks/pluginmanager/`
 
 ### 2. Implemented Remote Plugin Download Feature
 
 #### Backend Implementation (`addons/plugin_manager.py`)
-- **New Endpoint**: `GET /pluginmanager/` - View installed and remote plugins
-- **New Endpoint**: `POST /pluginmanager/install/<plugin_id>` - Install a plugin from remote repository
-- **New Endpoint**: `POST /pluginmanager/uninstall/<plugin_file>` - Uninstall a plugin
+- **New Endpoint**: `GET /disks/pluginmanager/` - View installed and remote plugins
+- **New Endpoint**: `POST /disks/pluginmanager/install/<plugin_id>` - Install a plugin from remote repository
+- **New Endpoint**: `POST /disks/pluginmanager/uninstall/<plugin_file>` - Uninstall a plugin
 - **Features**:
   - Fetches available plugins from remote JSON repository
   - Downloads plugin files via HTTPS
