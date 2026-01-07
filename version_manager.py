@@ -4,6 +4,7 @@ Handles checking for new dashboard versions from GitHub and managing update noti
 """
 
 import json
+import logging
 import os
 import re
 import time
@@ -11,6 +12,10 @@ import shutil
 import subprocess
 import requests
 from datetime import datetime, timedelta
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 VERSION_CHECK_FILE = "version_check.json"
 GITHUB_REPO = "ChristianHandy/Linux-Magement-Dashbord"
@@ -67,17 +72,26 @@ def sanitize_branch_name(branch):
     """
     if not branch or not isinstance(branch, str):
         raise ValueError("Branch name cannot be empty or non-string")
+    
+    # Additional safety check: prevent absolute paths
+    if branch.startswith('/'):
+        raise ValueError("Branch name contains invalid characters or format")
+    
     # Only allow safe characters for branch names with reasonable length limit
     # Pattern requires alphanumeric start to prevent flag injection (e.g., -rf)
     # Allows dots for version tags (e.g., release/v1.2.3) but prevents path traversal
     if not re.match(r'^[a-zA-Z0-9][a-zA-Z0-9._-]*(?:/[a-zA-Z0-9][a-zA-Z0-9._-]*)*$', branch):
         raise ValueError("Branch name contains invalid characters or format")
+    
     # Additional safety check: prevent path traversal attempts
-    if '..' in branch or branch.startswith('.') or branch.endswith('.'):
+    # Check for .., leading/trailing dots, and ./ patterns
+    if '..' in branch or branch.startswith('.') or branch.endswith('.') or './' in branch:
         raise ValueError("Branch name contains invalid path traversal patterns")
+    
     # Additional safety check: limit total length
     if len(branch) > 255:
         raise ValueError("Branch name exceeds maximum length of 255 characters")
+    
     return branch
 
 def get_current_branch():
@@ -95,11 +109,12 @@ def get_current_branch():
             # Sanitize the branch name before returning
             try:
                 return sanitize_branch_name(branch)
-            except ValueError:
-                # If sanitization fails, fall back to main
+            except ValueError as e:
+                # Log failed sanitization for security monitoring
+                logger.warning(f"Branch name sanitization failed, falling back to 'main': {e}")
                 return "main"
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error(f"Error getting current branch: {e}")
     return "main"
 
 def check_for_updates():
