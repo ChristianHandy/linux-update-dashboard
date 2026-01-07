@@ -10,6 +10,7 @@ import version_manager
 import email_config
 import email_notifier
 from constants import is_localhost, LOCALHOST_IDENTIFIERS
+from urllib.parse import urlparse, urljoin
 
 # Load environment variables from .env file if python-dotenv is available
 try:
@@ -67,6 +68,49 @@ def inject_version_notification():
     return dict(update_notification=notification)
 
 logs = {}
+
+def is_safe_redirect_url(target):
+    """
+    Validate that a URL is safe to redirect to.
+    Only allows relative URLs within the same application to prevent open redirect attacks.
+    
+    Args:
+        target: The URL to validate
+        
+    Returns:
+        bool: True if the URL is safe, False otherwise
+    """
+    if not target:
+        return False
+    
+    # Parse the target URL
+    parsed = urlparse(target)
+    
+    # Only allow relative URLs (no scheme and no netloc)
+    # This prevents redirecting to external sites
+    if parsed.scheme or parsed.netloc:
+        return False
+    
+    # Ensure the path starts with / to prevent protocol-relative URLs
+    if not target.startswith('/'):
+        return False
+    
+    return True
+
+def get_safe_redirect_url(url, default):
+    """
+    Get a safe redirect URL, falling back to a default if the URL is not safe.
+    
+    Args:
+        url: The URL to validate
+        default: The default URL to use if validation fails
+        
+    Returns:
+        str: A safe URL to redirect to
+    """
+    if url and is_safe_redirect_url(url):
+        return url
+    return default
 
 def current_user_has_role(*roles):
     """Check if the current logged-in user has any of the specified roles."""
@@ -148,7 +192,8 @@ def login_required(f):
 
 @app.route("/", methods=["GET", "POST"])
 def login():
-    next_url = request.args.get('next') or url_for('index')
+    # Security: Validate redirect URL to prevent open redirect attacks
+    next_url = get_safe_redirect_url(request.args.get('next'), url_for('index'))
     if request.method == "POST":
         username = request.form.get("user")
         password = request.form.get("pass")
@@ -222,7 +267,8 @@ def update(name):
         target=run_update,
         args=(hosts[name]["host"], hosts[name]["user"], name, logs[name])
     ).start()
-    return redirect(f"/progress/{name}")
+    # Security: Use url_for to safely construct redirect URL
+    return redirect(url_for('progress', name=name))
 
 @app.route("/progress/<name>")
 @login_required
@@ -347,7 +393,8 @@ def check_dashboard_version():
 def dismiss_dashboard_notification():
     """Dismiss the current update notification"""
     version_manager.dismiss_notification()
-    return redirect(request.referrer or url_for('index'))
+    # Security: Validate referrer URL to prevent open redirect attacks
+    return redirect(get_safe_redirect_url(request.referrer, url_for('index')))
 
 @app.route("/dashboard_version/update", methods=["GET", "POST"])
 @login_required
@@ -392,7 +439,8 @@ def update_repo(name):
         target=run_update,
         args=(hosts[name]["host"], hosts[name]["user"], name, logs[name], True)
     ).start()
-    return redirect(f"/progress/{name}")
+    # Security: Use url_for to safely construct redirect URL
+    return redirect(url_for('progress', name=name))
 
 # Host management routes
 @app.route("/hosts", methods=["GET", "POST"])
