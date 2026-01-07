@@ -10,7 +10,7 @@ import version_manager
 import email_config
 import email_notifier
 from constants import is_localhost, LOCALHOST_IDENTIFIERS
-from urllib.parse import urlparse, urljoin
+from urllib.parse import urlparse
 
 # Load environment variables from .env file if python-dotenv is available
 try:

@@ -297,8 +297,9 @@ def test_url_for_redirects():
             
             # Add a test host
             import json
+            hosts_file = os.path.join(os.path.dirname(__file__), 'hosts.json')
             hosts = {'testhost': {'host': 'localhost', 'user': 'testuser'}}
-            with open('/home/runner/work/Linux-Magement-Dashbord/Linux-Magement-Dashbord/hosts.json', 'w') as f:
+            with open(hosts_file, 'w') as f:
                 json.dump(hosts, f)
             
             # The update route will start a thread and redirect
