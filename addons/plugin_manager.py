@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 from user_management import login_required, get_user_role_names
 
-blueprint = Blueprint('plugin_manager', __name__, url_prefix='/pluginmanager')
+blueprint = Blueprint('plugin_manager', __name__, url_prefix='/disks/pluginmanager')
 
 addon_meta = {
     "name": "Plugin Manager",

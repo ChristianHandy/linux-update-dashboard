@@ -216,7 +216,7 @@ The dashboard includes a powerful plugin system that allows you to extend disk m
 
 1. Navigate to **Disk Management Tools** (`/disks`)
 2. Click the **🔌 Plugin Manager** button
-3. Or directly access `/pluginmanager/`
+3. Or directly access `/disks/pluginmanager/`
 
 **Note:** Only administrators can install or uninstall plugins. All users can view installed plugins.
 
@@ -236,7 +236,7 @@ The dashboard includes a powerful plugin system that allows you to extend disk m
 
 ### Installing a Plugin
 
-1. Navigate to the Plugin Manager (`/pluginmanager/`)
+1. Navigate to the Plugin Manager (`/disks/pluginmanager/`)
 2. Scroll to the **Available Remote Plugins** section
 3. Find the plugin you want to install
 4. Click the **Install** button
