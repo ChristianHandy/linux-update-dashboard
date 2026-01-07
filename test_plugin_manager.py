@@ -177,14 +177,14 @@ def test_path_sanitization():
             'addons/../../etc/passwd',
         ]
         
-        base = Path(base_dir).resolve()
+        base_path = Path(base_dir).resolve()
         for attempt in traversal_attempts:
             result = plugin_manager.sanitize_path(base_dir, attempt)
             # Path traversal should either return None or a path still within addons
             if result is not None:
                 # If a result is returned, verify it's still within the base directory using secure method
                 try:
-                    result.relative_to(base)
+                    result.relative_to(base_path)
                     # If we get here, the path is within base (which is acceptable)
                 except ValueError:
                     # Path escaped the base directory - this is a failure
@@ -200,7 +200,7 @@ def test_path_sanitization():
             abs_path_result = plugin_manager.sanitize_path(base_dir, '/etc/passwd')
             if abs_path_result is not None:
                 try:
-                    abs_path_result.relative_to(base)
+                    abs_path_result.relative_to(base_path)
                     # If we get here, it's contained (acceptable)
                 except ValueError:
                     # Path escaped - this is a failure
