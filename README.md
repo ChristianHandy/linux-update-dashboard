@@ -1,6 +1,6 @@
 # Linux Management Dashboard
 
-A comprehensive web dashboard combining system update management and disk tools for Linux computers.
+A comprehensive web dashboard combining system update management and disk tools for Linux and Windows computers.
 
 > **Note:** This project merges functionality from two repositories:
 > - [linux-update-dashboard](https://github.com/ChristianHandy/linux-update-dashboard) - Remote system update management
@@ -21,7 +21,10 @@ A comprehensive web dashboard combining system update management and disk tools 
 - Secure session management
 
 ### System Update Manager
-- Trigger updates remotely on multiple Linux computers via SSH
+- Trigger updates remotely on multiple Linux and Windows computers via SSH
+- **Cross-platform support** - Linux (Ubuntu, Debian, Fedora, CentOS, Arch) and Windows
+- **Windows Update support** - Automatic Windows system updates via PowerShell
+- **Windows software updates** - Software package updates via winget
 - **Automatic update scheduling** with configurable frequency (daily, weekly, monthly)
 - **Email notifications** - Scheduled reports and error alerts via SMTP
 - **Repository-only updates** - Update packages while preserving host configuration files
@@ -50,6 +53,8 @@ A comprehensive web dashboard combining system update management and disk tools 
 - Extensible architecture for custom disk tools and features
 
 ## Installation
+
+### Linux Installation
 1. Clone repository: `git clone https://github.com/ChristianHandy/linux-update-dashboard.git`
 2. Enter project: `cd linux-update-dashboard`
 3. Create virtual env: `python3 -m venv venv`
@@ -66,6 +71,29 @@ A comprehensive web dashboard combining system update management and disk tools 
    nano .env
    ```
 7. Run: `python app.py` (requires sudo for disk management features)
+
+### Windows Installation
+1. Clone repository: `git clone https://github.com/ChristianHandy/linux-update-dashboard.git`
+2. Enter project: `cd linux-update-dashboard`
+3. Create virtual env: `python -m venv venv`
+4. Activate: `venv\Scripts\activate`
+5. Install requirements: `pip install -r requirements.txt`
+6. **Configure security settings:**
+   ```powershell
+   # Copy the example environment file
+   copy .env.example .env
+   
+   # Edit .env and set secure values
+   # Use PowerShell to generate a secure SECRET_KEY:
+   # python -c "import secrets; print(secrets.token_hex(32))"
+   notepad .env
+   ```
+7. Run: `python app.py` (requires Administrator privileges for Windows updates)
+
+**Note:** For Windows Update support, ensure PowerShell execution policy allows running scripts:
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
 
 ## Quick Start
 
@@ -92,8 +120,8 @@ A comprehensive web dashboard combining system update management and disk tools 
    - **Important:** Never use default credentials in production!
 
 5. From the main menu, choose:
-   - **System Update Manager** (`/dashboard`) - Manage remote Linux systems
-   - **Disk Management Tools** (`/disks`) - Format and test disks (requires sudo)
+   - **System Update Manager** (`/dashboard`) - Manage remote Linux and Windows systems
+   - **Disk Management Tools** (`/disks`) - Format and test disks (Linux only, requires sudo)
    - **User Management** (`/users`) - Manage users and roles (admin only)
    - **My Profile** (`/users/profile`) - Update your own profile
 
@@ -346,6 +374,41 @@ The dashboard can now manage the local server it's running on, without requiring
 - Perfect for managing the dashboard server itself
 
 **Security Note:** Running updates on localhost still requires sudo privileges. Ensure the dashboard is run with appropriate permissions (see "Running & testing" section below).
+
+### Windows Support
+
+The dashboard now supports managing Windows systems for both system updates and software updates:
+
+**Windows System Updates:**
+- Uses PowerShell and PSWindowsUpdate module
+- Automatically installs PSWindowsUpdate if not present
+- Runs Windows Update to install system patches
+- Repository-only mode updates Windows system components only
+
+**Windows Software Updates:**
+- Uses Windows Package Manager (winget) when available
+- Updates all installed software packages
+- Full update mode includes both system and software updates
+- Automatic source and package agreement acceptance
+
+**Prerequisites for Windows:**
+- PowerShell 5.0 or later (included in Windows 10/11)
+- Administrator privileges for the dashboard user
+- For remote Windows hosts: SSH server configured (OpenSSH for Windows)
+- For software updates: winget installed (included in Windows 11, available for Windows 10)
+
+**Add a Windows host:**
+1. Log in to the dashboard and navigate to `/hosts`
+2. Fill in:
+   - Display name: A friendly name like "Windows Server"
+   - Host: `localhost` (for local Windows) or IP/hostname (for remote Windows)
+   - User: Windows administrator username (ignored for localhost)
+3. Click Save
+4. For remote Windows hosts: Set up SSH key authentication using the "Install SSH key" feature
+
+**Supported Platforms:**
+- Linux: Ubuntu, Debian, Fedora, CentOS, Arch Linux
+- Windows: Windows 10, Windows 11, Windows Server 2016+
 
 ### Add a remote host (via web)
 
