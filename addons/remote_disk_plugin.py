@@ -118,9 +118,13 @@ def get_remote_smart(host, port, username, device):
     Get SMART data from a remote disk.
     Returns the smartctl output or None if failed.
     """
-    # Sanitize device name
-    if not re.match(r'^[a-zA-Z0-9_-]{1,255}$', device):
-        return None, "Invalid device name"
+    # Import disktool_core for device name sanitization
+    import disktool_core
+    
+    try:
+        device = disktool_core.sanitize_device_name(device)
+    except ValueError as e:
+        return None, str(e)
     
     command = f"sudo smartctl -a /dev/{device}"
     output, error = execute_remote_command(host, port, username, command)
@@ -136,9 +140,13 @@ def format_remote_disk(host, port, username, device, fs_type):
     Format a remote disk with the specified filesystem.
     Returns success status and message.
     """
-    # Sanitize device name
-    if not re.match(r'^[a-zA-Z0-9_-]{1,255}$', device):
-        return False, "Invalid device name"
+    # Import disktool_core for device name sanitization
+    import disktool_core
+    
+    try:
+        device = disktool_core.sanitize_device_name(device)
+    except ValueError as e:
+        return False, str(e)
     
     # Validate filesystem type
     if fs_type not in ['ext4', 'xfs', 'fat32']:
@@ -168,9 +176,13 @@ def start_remote_smart_test(host, port, username, device, mode):
     Start a SMART test on a remote disk.
     Returns success status and message.
     """
-    # Sanitize device name
-    if not re.match(r'^[a-zA-Z0-9_-]{1,255}$', device):
-        return False, "Invalid device name"
+    # Import disktool_core for device name sanitization
+    import disktool_core
+    
+    try:
+        device = disktool_core.sanitize_device_name(device)
+    except ValueError as e:
+        return False, str(e)
     
     # Validate mode
     if mode not in ['short', 'long']:
@@ -220,25 +232,33 @@ def register(app, core):
         except:
             return False
     
+    # Helper to get username from session
+    def get_username():
+        """Get username from session, default to 'root'"""
+        return session.get('username', 'root')
+    
+    # Helper to get remote by ID
+    def get_remote_by_id(remote_id):
+        """Get remote configuration by ID, returns None if not found"""
+        remotes = core.list_remotes()
+        for r in remotes:
+            if r['id'] == remote_id:
+                return r
+        return None
+    
     @app.route("/disks/remote/list/<int:remote_id>")
     @login_required
     def remote_disk_list(remote_id):
         """List disks on a remote system."""
-        # Get remote details
-        remotes = core.list_remotes()
-        remote = None
-        for r in remotes:
-            if r['id'] == remote_id:
-                remote = r
-                break
+        # Get remote details using helper
+        remote = get_remote_by_id(remote_id)
         
         if not remote:
             flash('Remote system not found')
             return redirect(url_for('disks_index'))
         
-        # Get username from session or use 'root' as default
-        # In production, you should store username per remote
-        username = session.get('username', 'root')
+        # Get username using helper
+        username = get_username()
         
         # List disks on remote
         disks, error = list_remote_disks(remote['host'], remote['port'], username)
@@ -268,19 +288,14 @@ def register(app, core):
     @login_required
     def remote_disk_smart(remote_id, device):
         """View SMART data for a remote disk."""
-        # Get remote details
-        remotes = core.list_remotes()
-        remote = None
-        for r in remotes:
-            if r['id'] == remote_id:
-                remote = r
-                break
+        # Get remote details using helper
+        remote = get_remote_by_id(remote_id)
         
         if not remote:
             flash('Remote system not found')
             return redirect(url_for('disks_index'))
         
-        username = session.get('username', 'root')
+        username = get_username()
         
         # Get SMART data
         smart_data, error = get_remote_smart(remote['host'], remote['port'], username, device)
@@ -303,13 +318,8 @@ def register(app, core):
             flash('You need operator or admin role to format remote disks.')
             return redirect(url_for('disks_index'))
         
-        # Get remote details
-        remotes = core.list_remotes()
-        remote = None
-        for r in remotes:
-            if r['id'] == remote_id:
-                remote = r
-                break
+        # Get remote details using helper
+        remote = get_remote_by_id(remote_id)
         
         if not remote:
             flash('Remote system not found')
@@ -317,7 +327,7 @@ def register(app, core):
         
         if request.method == 'POST':
             fs_type = request.form.get('fs', 'ext4')
-            username = session.get('username', 'root')
+            username = get_username()
             
             success, message = format_remote_disk(remote['host'], remote['port'], 
                                                   username, device, fs_type)
@@ -342,19 +352,14 @@ def register(app, core):
             flash('You need operator or admin role to run SMART tests on remote disks.')
             return redirect(url_for('disks_index'))
         
-        # Get remote details
-        remotes = core.list_remotes()
-        remote = None
-        for r in remotes:
-            if r['id'] == remote_id:
-                remote = r
-                break
+        # Get remote details using helper
+        remote = get_remote_by_id(remote_id)
         
         if not remote:
             flash('Remote system not found')
             return redirect(url_for('disks_index'))
         
-        username = session.get('username', 'root')
+        username = get_username()
         
         success, message = start_remote_smart_test(remote['host'], remote['port'],
                                                    username, device, mode)
