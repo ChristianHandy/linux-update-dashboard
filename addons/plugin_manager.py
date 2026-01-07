@@ -34,6 +34,14 @@ def plugin_manager_index():
     mgr = getattr(current_app, 'addon_mgr', None)
     installed_plugins = mgr.status if mgr else []
     
+    # Check if current user is admin
+    is_admin = False
+    user_id = session.get("user_id")
+    if user_id:
+        from user_management import get_user_role_names
+        user_roles = get_user_role_names(user_id)
+        is_admin = 'admin' in user_roles
+    
     # Fetch available remote plugins
     remote_plugins = []
     try:
@@ -51,7 +59,8 @@ def plugin_manager_index():
     
     return render_template('disks/plugin_manager.html', 
                          plugins=installed_plugins, 
-                         remote_plugins=remote_plugins)
+                         remote_plugins=remote_plugins,
+                         is_admin=is_admin)
 
 @blueprint.route('/status.json')
 def plugin_manager_json():
@@ -62,7 +71,8 @@ def plugin_manager_json():
 def install_plugin(plugin_id):
     """Install a plugin from the remote repository"""
     # Require admin role to install plugins
-    if session.get("user_id") and not current_user_has_role('admin'):
+    user_id = session.get("user_id")
+    if not user_id or not current_user_has_role('admin'):
         flash('Only administrators can install plugins.')
         return redirect(url_for('plugin_manager.plugin_manager_index'))
     
@@ -120,7 +130,8 @@ def install_plugin(plugin_id):
 def uninstall_plugin(plugin_file):
     """Uninstall (delete) a plugin"""
     # Require admin role to uninstall plugins
-    if session.get("user_id") and not current_user_has_role('admin'):
+    user_id = session.get("user_id")
+    if not user_id or not current_user_has_role('admin'):
         flash('Only administrators can uninstall plugins.')
         return redirect(url_for('plugin_manager.plugin_manager_index'))
     
