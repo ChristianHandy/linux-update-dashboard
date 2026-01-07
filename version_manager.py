@@ -56,6 +56,23 @@ def get_current_commit_sha():
         pass
     return None
 
+def sanitize_branch_name(branch):
+    """
+    Security: Validate and sanitize git branch names to prevent command injection.
+    Only allows alphanumeric characters, hyphens, underscores, slashes, and dots.
+    Branch names are limited to 255 characters.
+    """
+    import re
+    if not branch or not isinstance(branch, str):
+        raise ValueError("Invalid branch name")
+    # Only allow safe characters for branch names with reasonable length limit
+    if not re.match(r'^[a-zA-Z0-9/_.-]{1,255}$', branch):
+        raise ValueError(f"Invalid branch name: {branch}")
+    # Additional check: prevent path traversal
+    if '..' in branch:
+        raise ValueError(f"Invalid branch name: {branch}")
+    return branch
+
 def get_current_branch():
     """Get the current git branch"""
     try:
@@ -67,7 +84,13 @@ def get_current_branch():
             timeout=5
         )
         if result.returncode == 0:
-            return result.stdout.strip()
+            branch = result.stdout.strip()
+            # Sanitize the branch name before returning
+            try:
+                return sanitize_branch_name(branch)
+            except ValueError:
+                # If sanitization fails, fall back to main
+                return "main"
     except Exception:
         pass
     return "main"
@@ -224,8 +247,14 @@ def perform_self_update(preserve_configs=True):
         if result.returncode != 0:
             return False, f"Failed to fetch updates: {result.stderr}"
         
-        # Get current branch
+        # Get current branch (already sanitized by get_current_branch)
         branch = get_current_branch()
+        
+        # Additional security check: validate branch name before use
+        try:
+            branch = sanitize_branch_name(branch)
+        except ValueError as e:
+            return False, f"Invalid branch name: {e}"
         
         # Pull latest changes
         result = subprocess.run(
