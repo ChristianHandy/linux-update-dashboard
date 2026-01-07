@@ -180,9 +180,14 @@ def test_path_sanitization():
             result = plugin_manager.sanitize_path('addons', attempt)
             # Path traversal should either return None or a path still within addons
             if result is not None:
-                # If a result is returned, verify it's still within the base directory
+                # If a result is returned, verify it's still within the base directory using secure method
                 base = Path('addons').resolve()
-                assert str(result).startswith(str(base)), f"Path traversal not blocked: {attempt} -> {result}"
+                try:
+                    result.relative_to(base)
+                    # If we get here, the path is within base (which is acceptable)
+                except ValueError:
+                    # Path escaped the base directory - this is a failure
+                    assert False, f"Path traversal not blocked: {attempt} -> {result}"
         
         # Test with templates directory
         valid_template = plugin_manager.sanitize_path('templates/addons', 'test.html')
@@ -193,7 +198,12 @@ def test_path_sanitization():
             abs_path_result = plugin_manager.sanitize_path('addons', '/etc/passwd')
             if abs_path_result is not None:
                 base = Path('addons').resolve()
-                assert str(abs_path_result).startswith(str(base)), "Absolute path not properly contained"
+                try:
+                    abs_path_result.relative_to(base)
+                    # If we get here, it's contained (acceptable)
+                except ValueError:
+                    # Path escaped - this is a failure
+                    assert False, "Absolute path not properly contained"
         
         print("✓ Path sanitization working correctly")
         return True

@@ -34,10 +34,15 @@ def sanitize_path(base_dir, filename):
         target_path = (base_path / filename).resolve()
         
         # Verify the target path is within the base directory
-        if not str(target_path).startswith(str(base_path)):
+        # Use a more secure check that handles edge cases
+        try:
+            # Check if base_path is a parent of target_path
+            target_path.relative_to(base_path)
+            return target_path
+        except ValueError:
+            # target_path is not relative to base_path, so it's outside
             return None
             
-        return target_path
     except (ValueError, OSError):
         return None
 
