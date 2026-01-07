@@ -4,7 +4,6 @@ import logging
 import paramiko
 import time
 import subprocess
-import shlex
 import email_config
 import email_notifier
 from constants import is_localhost
@@ -81,13 +80,32 @@ def run_local_update(name, log_list, repo_only, log_func):
         # Detect the distribution
         log_func("Detecting Linux distribution...")
         try:
+            if not os.path.exists('/etc/os-release'):
+                raise FileNotFoundError("The /etc/os-release file is missing. This file is required to detect the Linux distribution.")
+            
             with open('/etc/os-release', 'r') as f:
                 for line in f:
                     if line.startswith('ID='):
                         distro = line.strip().split('=')[1].strip('"').lower()
                         break
                 else:
-                    distro = 'unknown'
+                    raise ValueError("Could not find 'ID=' line in /etc/os-release")
+        except FileNotFoundError as e:
+            error_msg = f"✗ {str(e)}"
+            log_func(error_msg)
+            error_occurred = True
+            error_details.append(str(e))
+            if email_config.get_error_notifications_enabled():
+                email_notifier.send_error_notification(name, "\n".join(error_details))
+            return
+        except PermissionError:
+            error_msg = "✗ Permission denied reading /etc/os-release. Ensure the application has read permissions."
+            log_func(error_msg)
+            error_occurred = True
+            error_details.append("Permission denied reading /etc/os-release")
+            if email_config.get_error_notifications_enabled():
+                email_notifier.send_error_notification(name, "\n".join(error_details))
+            return
         except Exception as e:
             error_msg = f"✗ Could not detect distribution: {e}"
             log_func(error_msg)
@@ -116,9 +134,18 @@ def run_local_update(name, log_list, repo_only, log_func):
         # Execute the update command locally
         log_func("Executing update command...")
         
-        # Security Note: Using shell=True because update_cmd contains shell constructs (&&, pipes).
-        # The command is constructed internally from trusted sources, not user input.
-        # Input validation is performed via distribution detection.
+        # Security Note: Using shell=True is required here because update_cmd contains 
+        # shell operators (&&) and environment variables that need shell interpretation.
+        # The command string is constructed entirely from:
+        # 1. Trusted internal distribution detection (validated against known distros)
+        # 2. Hardcoded command templates defined in get_update_command()
+        # 3. No user input is incorporated into the command
+        # This approach is acceptable because:
+        # - The distribution is detected from the system's /etc/os-release file
+        # - Commands are selected from a fixed set of templates per distribution
+        # - No external or user-provided data influences command construction
+        # Alternative: Could use subprocess.run() with shell=False and pass commands
+        # as arrays, but would require restructuring the command chains.
         process = subprocess.Popen(
             update_cmd,
             shell=True,
