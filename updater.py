@@ -4,15 +4,63 @@ import logging
 import paramiko
 import time
 import subprocess
+import shlex
 import email_config
 import email_notifier
+from constants import is_localhost
 
 SUPPORTED_DISTRIBUTIONS = ['ubuntu', 'debian', 'fedora', 'centos', 'arch']
 
-def is_localhost(host):
-    """Check if the host is localhost or local IP"""
-    localhost_names = ['localhost', '127.0.0.1', '::1', '0.0.0.0']
-    return host.lower() in localhost_names
+def get_update_command(distro, repo_only=False):
+    """
+    Get the update command for a given distribution.
+    
+    Args:
+        distro: Linux distribution name
+        repo_only: If True, only update packages without modifying config files
+    
+    Returns:
+        tuple: (command_string, description)
+    
+    Raises:
+        ValueError: If distribution is not supported
+    """
+    if distro in ['ubuntu', 'debian']:
+        if repo_only:
+            cmd = "sudo DEBIAN_FRONTEND=noninteractive apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get upgrade -y -o Dpkg::Options::='--force-confold'"
+            desc = "repository-only update (preserving config files)"
+        else:
+            cmd = "sudo DEBIAN_FRONTEND=noninteractive apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && sudo DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y"
+            desc = "full system update"
+    
+    elif distro == 'fedora':
+        if repo_only:
+            cmd = "sudo dnf upgrade -y --setopt=tsflags=noscripts"
+            desc = "repository-only update (preserving config files)"
+        else:
+            cmd = "sudo dnf upgrade -y"
+            desc = "full system update"
+    
+    elif distro == 'centos':
+        if repo_only:
+            cmd = "sudo yum update -y --setopt=tsflags=noscripts"
+            desc = "repository-only update (preserving config files)"
+        else:
+            cmd = "sudo yum update -y"
+            desc = "full system update"
+    
+    elif distro == 'arch':
+        if repo_only:
+            cmd = "sudo pacman -Syu --noconfirm --needed"
+            desc = "repository-only update"
+        else:
+            cmd = "sudo pacman -Syu --noconfirm"
+            desc = "full system update"
+    
+    else:
+        raise ValueError(f"Unsupported distribution: {distro}")
+    
+    return cmd, desc
 
 def run_local_update(name, log_list, repo_only, log_func):
     """
@@ -51,53 +99,16 @@ def run_local_update(name, log_list, repo_only, log_func):
         
         log_func(f"Detected distribution: {distro}")
         
-        # Determine the update commands based on distribution and update type
-        if distro in ['ubuntu', 'debian']:
-            if repo_only:
-                # Repository-only update for Debian/Ubuntu (preserve config files)
-                update_cmd = "sudo DEBIAN_FRONTEND=noninteractive apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get upgrade -y -o Dpkg::Options::='--force-confold'"
-                log_func("Running repository-only update (preserving config files)...")
-            else:
-                # Full system update for Debian/Ubuntu
-                update_cmd = "sudo DEBIAN_FRONTEND=noninteractive apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && sudo DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y"
-                log_func("Running full system update...")
-        
-        elif distro == 'fedora':
-            if repo_only:
-                # Repository-only update for Fedora (preserve config files)
-                update_cmd = "sudo dnf upgrade -y --setopt=tsflags=noscripts"
-                log_func("Running repository-only update (preserving config files)...")
-            else:
-                # Full system update for Fedora
-                update_cmd = "sudo dnf upgrade -y"
-                log_func("Running full system update...")
-        
-        elif distro == 'centos':
-            if repo_only:
-                # Repository-only update for CentOS (preserve config files)
-                update_cmd = "sudo yum update -y --setopt=tsflags=noscripts"
-                log_func("Running repository-only update (preserving config files)...")
-            else:
-                # Full system update for CentOS
-                update_cmd = "sudo yum update -y"
-                log_func("Running full system update...")
-        
-        elif distro == 'arch':
-            if repo_only:
-                # Repository-only update for Arch (skip already installed packages)
-                update_cmd = "sudo pacman -Syu --noconfirm --needed"
-                log_func("Running repository-only update...")
-            else:
-                # Full system update for Arch
-                update_cmd = "sudo pacman -Syu --noconfirm"
-                log_func("Running full system update...")
-        
-        else:
-            error_msg = f"✗ Unsupported distribution '{distro}'"
+        # Get the update command for this distribution
+        try:
+            update_cmd, description = get_update_command(distro, repo_only)
+            log_func(f"Running {description}...")
+        except ValueError as e:
+            error_msg = f"✗ {str(e)}"
             log_func(error_msg)
             log_func("Supported distributions: Ubuntu, Debian, Fedora, CentOS, Arch")
             error_occurred = True
-            error_details.append(f"Unsupported distribution: {distro}")
+            error_details.append(str(e))
             if email_config.get_error_notifications_enabled():
                 email_notifier.send_error_notification(name, "\n".join(error_details))
             return
@@ -105,7 +116,9 @@ def run_local_update(name, log_list, repo_only, log_func):
         # Execute the update command locally
         log_func("Executing update command...")
         
-        # Run the command with shell=True to handle pipes and sudo
+        # Security Note: Using shell=True because update_cmd contains shell constructs (&&, pipes).
+        # The command is constructed internally from trusted sources, not user input.
+        # Input validation is performed via distribution detection.
         process = subprocess.Popen(
             update_cmd,
             shell=True,
@@ -190,53 +203,16 @@ def run_update(host, user, name, log_list, repo_only=False):
         distro = stdout.read().decode().strip().lower()
         log(f"Detected distribution: {distro}")
         
-        # Determine the update commands based on distribution and update type
-        if distro in ['ubuntu', 'debian']:
-            if repo_only:
-                # Repository-only update for Debian/Ubuntu (preserve config files)
-                update_cmd = "sudo DEBIAN_FRONTEND=noninteractive apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get upgrade -y -o Dpkg::Options::='--force-confold'"
-                log("Running repository-only update (preserving config files)...")
-            else:
-                # Full system update for Debian/Ubuntu
-                update_cmd = "sudo DEBIAN_FRONTEND=noninteractive apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && sudo DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y"
-                log("Running full system update...")
-        
-        elif distro == 'fedora':
-            if repo_only:
-                # Repository-only update for Fedora (preserve config files)
-                update_cmd = "sudo dnf upgrade -y --setopt=tsflags=noscripts"
-                log("Running repository-only update (preserving config files)...")
-            else:
-                # Full system update for Fedora
-                update_cmd = "sudo dnf upgrade -y"
-                log("Running full system update...")
-        
-        elif distro == 'centos':
-            if repo_only:
-                # Repository-only update for CentOS (preserve config files)
-                update_cmd = "sudo yum update -y --setopt=tsflags=noscripts"
-                log("Running repository-only update (preserving config files)...")
-            else:
-                # Full system update for CentOS
-                update_cmd = "sudo yum update -y"
-                log("Running full system update...")
-        
-        elif distro == 'arch':
-            if repo_only:
-                # Repository-only update for Arch (skip already installed packages)
-                update_cmd = "sudo pacman -Syu --noconfirm --needed"
-                log("Running repository-only update...")
-            else:
-                # Full system update for Arch
-                update_cmd = "sudo pacman -Syu --noconfirm"
-                log("Running full system update...")
-        
-        else:
-            error_msg = f"✗ Unsupported distribution '{distro}'"
+        # Get the update command for this distribution
+        try:
+            update_cmd, description = get_update_command(distro, repo_only)
+            log(f"Running {description}...")
+        except ValueError as e:
+            error_msg = f"✗ {str(e)}"
             log(error_msg)
             log("Supported distributions: Ubuntu, Debian, Fedora, CentOS, Arch")
             error_occurred = True
-            error_details.append(f"Unsupported distribution: {distro}")
+            error_details.append(str(e))
             return
         
         # Execute the update command

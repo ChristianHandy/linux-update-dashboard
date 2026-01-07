@@ -10,7 +10,7 @@ import os
 # Add parent directory to path so we can import modules
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-import updater
+from constants import is_localhost
 
 def test_is_localhost():
     """Test the is_localhost function"""
@@ -19,7 +19,7 @@ def test_is_localhost():
     # Test cases that should return True
     localhost_values = ['localhost', 'LOCALHOST', 'Localhost', '127.0.0.1', '::1', '0.0.0.0']
     for value in localhost_values:
-        result = updater.is_localhost(value)
+        result = is_localhost(value)
         status = "✓" if result else "✗"
         print(f"  {status} is_localhost('{value}') = {result} (expected True)")
         if not result:
@@ -29,7 +29,7 @@ def test_is_localhost():
     # Test cases that should return False
     remote_values = ['192.168.1.1', 'example.com', 'remote-server', '10.0.0.1']
     for value in remote_values:
-        result = updater.is_localhost(value)
+        result = is_localhost(value)
         status = "✓" if not result else "✗"
         print(f"  {status} is_localhost('{value}') = {result} (expected False)")
         if result:
