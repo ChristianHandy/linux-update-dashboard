@@ -13,3 +13,5 @@ python-dotenv>=1.0.0
 # HTTP requests for version checking
 requests>=2.31.0
 
+#smartctl for smart checks
+smartmontools
