@@ -88,10 +88,22 @@ def run(cmd):
         raise ValueError("All command arguments must be strings")
     
     # Validate command executable (first element) doesn't contain path traversal or shell metacharacters
-    # Allow only alphanumeric, dash, underscore, and forward slash for absolute paths
     executable = cmd[0]
-    if not re.match(r'^[a-zA-Z0-9/_-]+$', executable):
-        raise ValueError(f"Invalid command executable: {executable}")
+    
+    # Check for control characters including null bytes
+    if any(ord(c) < 32 for c in executable):
+        raise ValueError(f"Invalid command executable: contains control characters")
+    
+    # Allow only alphanumeric, dash, and underscore for command names
+    # OR absolute paths that start with / and don't contain path traversal
+    if executable.startswith('/'):
+        # For absolute paths, ensure no path traversal patterns
+        if '..' in executable or not re.match(r'^/[a-zA-Z0-9/_-]+$', executable):
+            raise ValueError(f"Invalid command executable: path traversal detected")
+    else:
+        # For command names, only allow safe characters
+        if not re.match(r'^[a-zA-Z0-9_-]+$', executable):
+            raise ValueError(f"Invalid command executable: {executable}")
     
     try:
         # Explicitly set shell=False to prevent shell injection
