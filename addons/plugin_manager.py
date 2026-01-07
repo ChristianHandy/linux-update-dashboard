@@ -15,6 +15,32 @@ addon_meta = {
 # Default plugin repository (GitHub repo or API endpoint)
 REMOTE_PLUGIN_REPO = "https://raw.githubusercontent.com/ChristianHandy/Linux-Management-Dashboard-Plugins/main/plugins.json"
 
+def sanitize_path(base_dir, filename):
+    """
+    Safely construct and validate a path within the base directory.
+    
+    Args:
+        base_dir: The base directory (e.g., 'addons', 'templates/addons')
+        filename: The filename to join with the base directory
+        
+    Returns:
+        Path object if valid, None if the path would escape the base directory
+    """
+    try:
+        # Convert base_dir to absolute path
+        base_path = Path(base_dir).resolve()
+        
+        # Join with filename and resolve
+        target_path = (base_path / filename).resolve()
+        
+        # Verify the target path is within the base directory
+        if not str(target_path).startswith(str(base_path)):
+            return None
+            
+        return target_path
+    except (ValueError, OSError):
+        return None
+
 def current_user_has_role(*roles):
     """Check if the current logged-in user has any of the specified roles."""
     user_id = session.get("user_id")
@@ -110,7 +136,12 @@ def install_plugin(plugin_id):
         
         # Save plugin to addons directory
         plugin_filename = f"{plugin_id}.py"
-        plugin_path = Path('addons') / plugin_filename
+        plugin_path = sanitize_path('addons', plugin_filename)
+        
+        # Validate the sanitized path
+        if plugin_path is None:
+            flash('Invalid plugin path.')
+            return redirect(url_for('plugin_manager.plugin_manager_index'))
         
         # Check if plugin already exists
         if plugin_path.exists():
@@ -149,7 +180,12 @@ def uninstall_plugin(plugin_file):
         return redirect(url_for('plugin_manager.plugin_manager_index'))
     
     try:
-        plugin_path = Path('addons') / plugin_file
+        plugin_path = sanitize_path('addons', plugin_file)
+        
+        # Validate the sanitized path
+        if plugin_path is None:
+            flash('Invalid plugin path.')
+            return redirect(url_for('plugin_manager.plugin_manager_index'))
         
         if not plugin_path.exists():
             flash(f'Plugin {plugin_file} not found.')
@@ -160,8 +196,10 @@ def uninstall_plugin(plugin_file):
         
         # Delete template if exists
         template_name = plugin_file.replace('.py', '.html')
-        template_path = Path('templates/addons') / template_name
-        if template_path.exists():
+        template_path = sanitize_path('templates/addons', template_name)
+        
+        # Validate the sanitized template path
+        if template_path is not None and template_path.exists():
             os.remove(template_path)
         
         flash(f'Plugin {plugin_file} uninstalled successfully! Please restart the application.')

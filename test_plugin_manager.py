@@ -153,6 +153,56 @@ def test_security_checks():
         traceback.print_exc()
         return False
 
+def test_path_sanitization():
+    """Test path sanitization to prevent path traversal attacks"""
+    print("\nTesting path sanitization...")
+    try:
+        from addons import plugin_manager
+        
+        # Test valid paths
+        valid_path = plugin_manager.sanitize_path('addons', 'test_plugin.py')
+        assert valid_path is not None, "Valid path rejected"
+        assert 'addons' in str(valid_path), "Valid path doesn't contain base directory"
+        assert 'test_plugin.py' in str(valid_path), "Valid path doesn't contain filename"
+        
+        # Test path traversal attacks
+        traversal_attempts = [
+            '../etc/passwd',
+            '../../etc/passwd',
+            '../../../etc/passwd',
+            '..\\..\\windows\\system32',
+            'subdir/../../../etc/passwd',
+            './../../etc/passwd',
+            'addons/../../etc/passwd',
+        ]
+        
+        for attempt in traversal_attempts:
+            result = plugin_manager.sanitize_path('addons', attempt)
+            # Path traversal should either return None or a path still within addons
+            if result is not None:
+                # If a result is returned, verify it's still within the base directory
+                base = Path('addons').resolve()
+                assert str(result).startswith(str(base)), f"Path traversal not blocked: {attempt} -> {result}"
+        
+        # Test with templates directory
+        valid_template = plugin_manager.sanitize_path('templates/addons', 'test.html')
+        assert valid_template is not None, "Valid template path rejected"
+        
+        # Test absolute path attempts
+        if os.name != 'nt':  # Unix-like systems
+            abs_path_result = plugin_manager.sanitize_path('addons', '/etc/passwd')
+            if abs_path_result is not None:
+                base = Path('addons').resolve()
+                assert str(abs_path_result).startswith(str(base)), "Absolute path not properly contained"
+        
+        print("✓ Path sanitization working correctly")
+        return True
+    except Exception as e:
+        print(f"✗ Path sanitization test failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
 def main():
     """Run all tests"""
     print("=" * 60)
@@ -166,6 +216,7 @@ def main():
         test_addon_loader_status,
         test_remote_plugin_json_format,
         test_security_checks,
+        test_path_sanitization,
     ]
     
     results = []
