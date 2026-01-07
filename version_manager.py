@@ -4,12 +4,17 @@ Handles checking for new dashboard versions from GitHub and managing update noti
 """
 
 import json
+import logging
 import os
+import re
 import time
 import shutil
 import subprocess
 import requests
 from datetime import datetime, timedelta
+
+# Get logger for this module
+logger = logging.getLogger(__name__)
 
 VERSION_CHECK_FILE = "version_check.json"
 GITHUB_REPO = "ChristianHandy/Linux-Magement-Dashbord"
@@ -56,6 +61,38 @@ def get_current_commit_sha():
         pass
     return None
 
+def sanitize_branch_name(branch):
+    """
+    Security: Validate and sanitize git branch names to prevent command injection.
+    Only allows alphanumeric characters, hyphens, underscores, and dots in branch segments,
+    with forward slashes as path separators for hierarchical branch names.
+    Branch names must start with alphanumeric characters to prevent flag injection.
+    Branch names are limited to 255 characters.
+    """
+    if not branch or not isinstance(branch, str):
+        raise ValueError("Branch name cannot be empty or non-string")
+    
+    # Additional safety check: prevent absolute paths
+    if branch.startswith('/'):
+        raise ValueError("Branch name contains invalid characters or format")
+    
+    # Only allow safe characters for branch names with reasonable length limit
+    # Pattern requires alphanumeric start to prevent flag injection (e.g., -rf)
+    # Allows dots for version tags (e.g., release/v1.2.3) but prevents path traversal
+    if not re.match(r'^[a-zA-Z0-9][a-zA-Z0-9._-]*(?:/[a-zA-Z0-9][a-zA-Z0-9._-]*)*$', branch):
+        raise ValueError("Branch name contains invalid characters or format")
+    
+    # Additional safety check: prevent path traversal attempts
+    # Check for .. (consecutive dots), /./ patterns, and trailing dots
+    if '..' in branch or re.search(r'/\./', branch) or branch.endswith('.'):
+        raise ValueError("Branch name contains invalid path traversal patterns")
+    
+    # Additional safety check: limit total length
+    if len(branch) > 255:
+        raise ValueError("Branch name exceeds maximum length of 255 characters")
+    
+    return branch
+
 def get_current_branch():
     """Get the current git branch"""
     try:
@@ -67,9 +104,16 @@ def get_current_branch():
             timeout=5
         )
         if result.returncode == 0:
-            return result.stdout.strip()
-    except Exception:
-        pass
+            branch = result.stdout.strip()
+            # Sanitize the branch name before returning
+            try:
+                return sanitize_branch_name(branch)
+            except ValueError as e:
+                # Log failed sanitization for security monitoring
+                logger.warning(f"Branch name sanitization failed, falling back to 'main': {e}")
+                return "main"
+    except Exception as e:
+        logger.error(f"Error getting current branch: {e}")
     return "main"
 
 def check_for_updates():
@@ -224,7 +268,7 @@ def perform_self_update(preserve_configs=True):
         if result.returncode != 0:
             return False, f"Failed to fetch updates: {result.stderr}"
         
-        # Get current branch
+        # Get current branch (already sanitized by get_current_branch)
         branch = get_current_branch()
         
         # Pull latest changes
