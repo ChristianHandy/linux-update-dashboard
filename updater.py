@@ -24,12 +24,15 @@ WINDOWS_WINGET_UPDATE = (
     "}"
 )
 
+# Remote Windows detection command
+WINDOWS_DETECTION_COMMAND = 'powershell.exe -Command "Write-Output \'windows\'" 2>&1 || echo \'\''
+
 def get_update_command(distro, repo_only=False):
     """
-    Get the update command for a given distribution or operating system.
+    Get the update command for a given Linux distribution or Windows.
     
     Args:
-        distro: Operating system name ('ubuntu', 'debian', 'fedora', 'centos', 'arch', 'windows')
+        distro: Linux distribution name ('ubuntu', 'debian', 'fedora', 'centos', 'arch') or 'windows'
         repo_only: If True, only update packages without modifying config files
     
     Returns:
@@ -263,7 +266,7 @@ def run_update(host, user, name, log_list, repo_only=False):
         # Detect the operating system and distribution
         log("Detecting operating system...")
         # First, try to detect if it's Windows by checking for PowerShell
-        stdin, stdout, stderr = ssh.exec_command("powershell.exe -Command \"Write-Output 'windows'\" 2>&1 || echo ''")
+        stdin, stdout, stderr = ssh.exec_command(WINDOWS_DETECTION_COMMAND)
         result = stdout.read().decode().strip().lower()
         
         if result == 'windows':
