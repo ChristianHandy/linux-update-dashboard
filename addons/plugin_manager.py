@@ -3,6 +3,7 @@ import requests
 import os
 import re
 from pathlib import Path
+from user_management import login_required, get_user_role_names
 
 blueprint = Blueprint('plugin_manager', __name__, url_prefix='/pluginmanager')
 
@@ -16,7 +17,6 @@ REMOTE_PLUGIN_REPO = "https://raw.githubusercontent.com/ChristianHandy/Linux-Man
 
 def current_user_has_role(*roles):
     """Check if the current logged-in user has any of the specified roles."""
-    from user_management import get_user_role_names
     user_id = session.get("user_id")
     if not user_id:
         return False
@@ -30,6 +30,7 @@ def register(app, core):
     app.register_blueprint(blueprint)
 
 @blueprint.route('/')
+@login_required
 def plugin_manager_index():
     mgr = getattr(current_app, 'addon_mgr', None)
     installed_plugins = mgr.status if mgr else []
@@ -38,7 +39,6 @@ def plugin_manager_index():
     is_admin = False
     user_id = session.get("user_id")
     if user_id:
-        from user_management import get_user_role_names
         user_roles = get_user_role_names(user_id)
         is_admin = 'admin' in user_roles
     
@@ -63,11 +63,13 @@ def plugin_manager_index():
                          is_admin=is_admin)
 
 @blueprint.route('/status.json')
+@login_required
 def plugin_manager_json():
     mgr = getattr(current_app, 'addon_mgr', None)
     return jsonify(mgr.status if mgr else [])
 
 @blueprint.route('/install/<plugin_id>', methods=['POST'])
+@login_required
 def install_plugin(plugin_id):
     """Install a plugin from the remote repository"""
     # Require admin role to install plugins
@@ -127,6 +129,7 @@ def install_plugin(plugin_id):
     return redirect(url_for('plugin_manager.plugin_manager_index'))
 
 @blueprint.route('/uninstall/<plugin_file>', methods=['POST'])
+@login_required
 def uninstall_plugin(plugin_file):
     """Uninstall (delete) a plugin"""
     # Require admin role to uninstall plugins
