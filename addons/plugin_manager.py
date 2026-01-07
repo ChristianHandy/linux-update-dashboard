@@ -3,7 +3,7 @@ import requests
 import os
 import re
 from pathlib import Path
-from functools import wraps
+from user_management import login_required, get_user_role_names
 
 blueprint = Blueprint('plugin_manager', __name__, url_prefix='/pluginmanager')
 
@@ -15,22 +15,8 @@ addon_meta = {
 # Default plugin repository (GitHub repo or API endpoint)
 REMOTE_PLUGIN_REPO = "https://raw.githubusercontent.com/ChristianHandy/Linux-Management-Dashboard-Plugins/main/plugins.json"
 
-def login_required(f):
-    """Decorator to require login - uses new user management system."""
-    @wraps(f)
-    def wrapped(*args, **kwargs):
-        # Check new user_id session first
-        if session.get("user_id"):
-            return f(*args, **kwargs)
-        # Fallback to old login session for backward compatibility
-        if session.get("login"):
-            return f(*args, **kwargs)
-        return redirect(url_for('login', next=request.path))
-    return wrapped
-
 def current_user_has_role(*roles):
     """Check if the current logged-in user has any of the specified roles."""
-    from user_management import get_user_role_names
     user_id = session.get("user_id")
     if not user_id:
         return False
@@ -53,7 +39,6 @@ def plugin_manager_index():
     is_admin = False
     user_id = session.get("user_id")
     if user_id:
-        from user_management import get_user_role_names
         user_roles = get_user_role_names(user_id)
         is_admin = 'admin' in user_roles
     

@@ -286,12 +286,16 @@ def list_roles():
 
 # Authorization decorators
 def login_required(f):
-    """Decorator to require login."""
+    """Decorator to require login - uses new user management system with backward compatibility."""
     @wraps(f)
     def wrapped(*args, **kwargs):
-        if not session.get("user_id"):
-            return redirect(url_for('login', next=request.path))
-        return f(*args, **kwargs)
+        # Check new user_id session first
+        if session.get("user_id"):
+            return f(*args, **kwargs)
+        # Fallback to old login session for backward compatibility
+        if session.get("login"):
+            return f(*args, **kwargs)
+        return redirect(url_for('login', next=request.path))
     return wrapped
 
 def role_required(*required_roles):
