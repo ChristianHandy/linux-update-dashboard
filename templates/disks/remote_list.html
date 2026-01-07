@@ -1,0 +1,76 @@
+{% extends 'disks/base.html' %}
+{% block title %}Remote Disks – {{ remote.name }}{% endblock %}
+{% block content %}
+<div class="container mt-4">
+  <h2>Remote Disks on {{ remote.name }}</h2>
+  <p class="text-muted">Host: {{ remote.host }}:{{ remote.port }} | User: {{ username }}</p>
+  
+  <div class="mb-3">
+    <a href="{{ url_for('remote_disk_sync', remote_id=remote.id) }}" class="btn btn-success">
+      <i class="bi bi-arrow-clockwise"></i> Refresh Disk List
+    </a>
+    <a href="{{ url_for('disks_index') }}" class="btn btn-secondary">
+      <i class="bi bi-arrow-left"></i> Back to Local Disks
+    </a>
+    <a href="{{ url_for('remotes') }}" class="btn btn-info">
+      <i class="bi bi-hdd-network"></i> Manage Remotes
+    </a>
+  </div>
+  
+  {% if disks %}
+  <div class="table-responsive">
+    <table class="table table-hover table-striped">
+      <thead class="table-dark">
+        <tr>
+          <th>Device</th>
+          <th>Model</th>
+          <th>Size</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for disk in disks %}
+        <tr>
+          <td><code>{{ disk.name }}</code></td>
+          <td>{{ disk.model or 'N/A' }}</td>
+          <td>{{ disk.size }}</td>
+          <td>
+            <a href="{{ url_for('remote_disk_smart', remote_id=remote.id, device=disk.name) }}" 
+               class="btn btn-sm btn-primary">
+              <i class="bi bi-bar-chart"></i> SMART
+            </a>
+            <a href="{{ url_for('remote_disk_smart_test', remote_id=remote.id, device=disk.name, mode='short') }}" 
+               class="btn btn-sm btn-outline-primary">
+              <i class="bi bi-play-circle"></i> Test
+            </a>
+            <a href="{{ url_for('remote_disk_format', remote_id=remote.id, device=disk.name) }}" 
+               class="btn btn-sm btn-danger">
+              <i class="bi bi-hdd"></i> Format
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="alert alert-warning">
+    <strong>No disks found</strong> or unable to connect to remote system.
+    <br>Make sure SSH keys are properly configured and the remote user has sudo access.
+  </div>
+  {% endif %}
+  
+  <div class="card mt-4">
+    <div class="card-header">
+      <h5>Connection Requirements</h5>
+    </div>
+    <div class="card-body">
+      <ul>
+        <li>SSH key authentication must be configured (see <a href="{{ url_for('install_key', name=remote.name) }}" target="_blank">Install SSH Key</a>)</li>
+        <li>Remote user must have sudo privileges without password for disk commands</li>
+        <li>Required remote utilities: <code>lsblk</code>, <code>smartctl</code>, <code>mkfs.*</code>, <code>wipefs</code></li>
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}
