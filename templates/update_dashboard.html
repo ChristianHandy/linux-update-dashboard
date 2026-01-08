@@ -67,7 +67,17 @@
   Status:
   <span class="{{ 'status-online' if status[name] else 'status-offline' }}">
     {{ 'Online' if status[name] else 'Offline' }}
-  </span><br><br>
+  </span><br>
+  {% if name in os_info %}
+    OS: <span style="color: #60a5fa; font-weight: 500;">{{ os_info[name].os_name|title }}{% if os_info[name].os_version and os_info[name].os_version != 'unknown' %} {{ os_info[name].os_version }}{% endif %}</span>
+    {% if os_info[name].os_name == 'windows' %}
+      <span style="background: #1e40af; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.75rem; margin-left: 4px;">🪟</span>
+    {% elif os_info[name].os_name in ['ubuntu', 'debian', 'fedora', 'centos', 'arch'] %}
+      <span style="background: #047857; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.75rem; margin-left: 4px;">🐧</span>
+    {% endif %}
+    <br>
+  {% endif %}
+  <br>
   <a class="btn" href="/update/{{ name }}">Full Update</a>
   <a class="btn" href="/update_repo/{{ name }}" style="background: #7c3aed;" title="Update packages from repository while keeping host configuration files unchanged">Repo Update</a>
   <a class="btn" href="/hosts/edit/{{ name }}" style="background: #475569;">Edit</a>
