@@ -18,6 +18,54 @@ from typing import Dict, List, Tuple, Optional
 logger = logging.getLogger(__name__)
 
 
+def validate_ip_address(ip: str) -> bool:
+    """
+    Validate that a string is a valid IPv4 address.
+    
+    Args:
+        ip: String to validate
+    
+    Returns:
+        bool: True if valid IPv4 address, False otherwise
+    """
+    pattern = r'^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$'
+    match = re.match(pattern, ip)
+    
+    if not match:
+        return False
+    
+    # Check that each octet is between 0 and 255
+    for octet in match.groups():
+        if int(octet) > 255:
+            return False
+    
+    return True
+
+
+def validate_network_prefix(prefix: str) -> bool:
+    """
+    Validate that a string is a valid network prefix (e.g., "192.168.1").
+    
+    Args:
+        prefix: String to validate
+    
+    Returns:
+        bool: True if valid network prefix, False otherwise
+    """
+    pattern = r'^(\d{1,3})\.(\d{1,3})\.(\d{1,3})$'
+    match = re.match(pattern, prefix)
+    
+    if not match:
+        return False
+    
+    # Check that each octet is between 0 and 255
+    for octet in match.groups():
+        if int(octet) > 255:
+            return False
+    
+    return True
+
+
 def get_arp_table() -> Dict[str, str]:
     """
     Retrieve the system ARP table and return MAC-to-IP mappings.
@@ -33,6 +81,12 @@ def get_arp_table() -> Dict[str, str]:
         if system_platform == 'windows':
             # Windows: Use 'arp -a' command
             result = subprocess.run(['arp', '-a'], capture_output=True, text=True, timeout=10)
+            
+            # Check if command succeeded
+            if result.returncode != 0:
+                logger.warning(f"ARP command failed with return code {result.returncode}")
+                return arp_mappings
+            
             output = result.stdout
             
             # Parse Windows ARP output
@@ -50,6 +104,13 @@ def get_arp_table() -> Dict[str, str]:
             try:
                 # Try 'ip neigh' first (more modern)
                 result = subprocess.run(['ip', 'neigh'], capture_output=True, text=True, timeout=10)
+                
+                # Check if command succeeded
+                if result.returncode != 0:
+                    logger.warning(f"'ip neigh' command failed with return code {result.returncode}")
+                    # Try fallback
+                    raise FileNotFoundError("Fallback to arp -n")
+                
                 output = result.stdout
                 
                 # Parse 'ip neigh' output
@@ -63,6 +124,12 @@ def get_arp_table() -> Dict[str, str]:
             except (FileNotFoundError, subprocess.SubprocessError):
                 # Fallback to 'arp -n' if 'ip neigh' is not available
                 result = subprocess.run(['arp', '-n'], capture_output=True, text=True, timeout=10)
+                
+                # Check if command succeeded
+                if result.returncode != 0:
+                    logger.warning(f"'arp -n' command failed with return code {result.returncode}")
+                    return arp_mappings
+                
                 output = result.stdout
                 
                 # Parse 'arp -n' output
@@ -195,6 +262,11 @@ def ping_host(ip: str) -> bool:
     Returns:
         bool: True if ping successful, False otherwise
     """
+    # Validate IP address to prevent command injection
+    if not validate_ip_address(ip):
+        logger.warning(f"Invalid IP address format: {ip}")
+        return False
+    
     system_platform = platform.system().lower()
     
     try:
@@ -225,6 +297,11 @@ def scan_network_for_mac(mac: str, network_prefix: str = "192.168.1") -> Optiona
     Returns:
         str: IP address if found, None otherwise
     """
+    # Validate network prefix to prevent command injection
+    if not validate_network_prefix(network_prefix):
+        logger.warning(f"Invalid network prefix format: {network_prefix}")
+        return None
+    
     logger.info(f"Scanning network {network_prefix}.0/24 for MAC {mac}")
     
     # Ping all hosts in the range to populate ARP table

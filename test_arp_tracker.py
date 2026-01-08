@@ -11,6 +11,40 @@ import arp_tracker
 class TestArpTracker(unittest.TestCase):
     """Test cases for arp_tracker module"""
     
+    def test_validate_ip_address(self):
+        """Test IP address validation"""
+        # Valid IPs
+        self.assertTrue(arp_tracker.validate_ip_address('192.168.1.1'))
+        self.assertTrue(arp_tracker.validate_ip_address('10.0.0.1'))
+        self.assertTrue(arp_tracker.validate_ip_address('172.16.0.1'))
+        self.assertTrue(arp_tracker.validate_ip_address('255.255.255.255'))
+        self.assertTrue(arp_tracker.validate_ip_address('0.0.0.0'))
+        
+        # Invalid IPs
+        self.assertFalse(arp_tracker.validate_ip_address('256.1.1.1'))  # Octet too large
+        self.assertFalse(arp_tracker.validate_ip_address('192.168.1'))  # Too few octets
+        self.assertFalse(arp_tracker.validate_ip_address('192.168.1.1.1'))  # Too many octets
+        self.assertFalse(arp_tracker.validate_ip_address('abc.def.ghi.jkl'))  # Non-numeric
+        self.assertFalse(arp_tracker.validate_ip_address('192.168.-1.1'))  # Negative number
+        self.assertFalse(arp_tracker.validate_ip_address(''))  # Empty string
+        self.assertFalse(arp_tracker.validate_ip_address('192.168.1.1; echo "hacked"'))  # Injection attempt
+    
+    def test_validate_network_prefix(self):
+        """Test network prefix validation"""
+        # Valid prefixes
+        self.assertTrue(arp_tracker.validate_network_prefix('192.168.1'))
+        self.assertTrue(arp_tracker.validate_network_prefix('10.0.0'))
+        self.assertTrue(arp_tracker.validate_network_prefix('172.16.0'))
+        self.assertTrue(arp_tracker.validate_network_prefix('255.255.255'))
+        
+        # Invalid prefixes
+        self.assertFalse(arp_tracker.validate_network_prefix('256.1.1'))  # Octet too large
+        self.assertFalse(arp_tracker.validate_network_prefix('192.168'))  # Too few octets
+        self.assertFalse(arp_tracker.validate_network_prefix('192.168.1.1'))  # Too many octets
+        self.assertFalse(arp_tracker.validate_network_prefix('abc.def.ghi'))  # Non-numeric
+        self.assertFalse(arp_tracker.validate_network_prefix(''))  # Empty string
+        self.assertFalse(arp_tracker.validate_network_prefix('192.168.1; echo "hacked"'))  # Injection attempt
+    
     def test_normalize_mac_address(self):
         """Test MAC address normalization"""
         # Test with colons

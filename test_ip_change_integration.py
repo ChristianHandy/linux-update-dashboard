@@ -38,7 +38,7 @@ class TestIpChangeDetectionIntegration(unittest.TestCase):
             try:
                 with open(self.temp_hosts_path, 'r') as f:
                     return json.load(f)
-            except:
+            except (FileNotFoundError, json.JSONDecodeError):
                 return {}
         
         def test_save_hosts(hosts):
