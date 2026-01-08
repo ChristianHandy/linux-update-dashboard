@@ -67,9 +67,9 @@ def detect_os_remote(host, user):
             os_version = None
             for line in os_release.split('\n'):
                 if line.startswith('ID='):
-                    os_name = line.split('=', 1)[1].strip('"').lower()
+                    os_name = line.split('=', 1)[1].strip().strip('"').lower()
                 elif line.startswith('VERSION_ID='):
-                    os_version = line.split('=', 1)[1].strip('"')
+                    os_version = line.split('=', 1)[1].strip().strip('"')
             
             return (os_name, os_version) if os_name else (None, None)
         
@@ -107,9 +107,9 @@ def detect_os_local():
                 os_version = None
                 for line in f:
                     if line.startswith('ID='):
-                        os_name = line.split('=', 1)[1].strip('"').lower()
+                        os_name = line.split('=', 1)[1].strip().strip('"').lower()
                     elif line.startswith('VERSION_ID='):
-                        os_version = line.split('=', 1)[1].strip('"')
+                        os_version = line.split('=', 1)[1].strip().strip('"')
                 
                 return (os_name, os_version) if os_name else (None, None)
     except Exception:
