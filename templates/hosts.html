@@ -23,9 +23,20 @@
         {% endif %}
         <br>
         Host: {{ h.host }}<br>
-        User: {{ h.user }}<br><br>
+        User: {{ h.user }}<br>
+        {% if h.os_name %}
+          OS: <span style="color: #60a5fa; font-weight: 500;">{{ h.os_name|title }}{% if h.os_version and h.os_version != 'unknown' %} {{ h.os_version }}{% endif %}</span>
+          {% if h.os_name == 'windows' %}
+            <span style="background: #1e40af; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.75rem; margin-left: 4px;">🪟</span>
+          {% elif h.os_name in ['ubuntu', 'debian', 'fedora', 'centos', 'arch'] %}
+            <span style="background: #047857; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.75rem; margin-left: 4px;">🐧</span>
+          {% endif %}
+          <br>
+        {% endif %}
+        <br>
         {% if not current_user_id or 'operator' in current_user_roles or 'admin' in current_user_roles %}
           <a class="btn" href="/hosts/edit/{{ name }}">Edit</a>
+          <a class="btn" href="/hosts/detect_os/{{ name }}" style="background: #0891b2;" title="Detect or refresh OS information">Detect OS</a>
           {% if h.host.lower() not in localhost_identifiers %}
             <a class="btn" href="/hosts/install_key/{{ name }}">Install SSH key</a>
           {% else %}
@@ -47,6 +58,13 @@
     <p><strong><span aria-label="Tip">💡</span> Tip:</strong> You can manage this local server by using <code>localhost</code> as the host. 
     No SSH key is needed for localhost - updates will run directly on this machine.</p>
     <p><strong>Example:</strong> Display name: "Local Server", Host: "localhost", User: (any value, will be ignored)</p>
+  </div>
+  <div class="card info-box" style="background: #1e293b; border: 1px solid #3b82f6;">
+    <p><strong><span aria-label="Multiboot">🔄</span> Multi-boot / Dual-boot Support:</strong> For PCs with multiple operating systems (e.g., Windows and Linux), 
+    the dashboard automatically detects which OS is currently running when you click <strong>"Detect OS"</strong>.</p>
+    <p>The detected OS information is cached, so updates will always use the correct commands for the currently booted OS. 
+    If you reboot into a different OS, simply click <strong>"Detect OS"</strong> again to update the information.</p>
+    <p><strong>Example:</strong> A PC dual-booting Windows 11 and Ubuntu 22.04 will show the currently running OS after detection.</p>
   </div>
   <form method="post" class="card">
     <label>Display name</label><br>

@@ -27,6 +27,94 @@ WINDOWS_WINGET_UPDATE = (
 # Remote Windows detection command
 WINDOWS_DETECTION_COMMAND = 'powershell.exe -Command "Write-Output \'windows\'" 2>&1 || echo \'\''
 
+def detect_os_remote(host, user):
+    """
+    Detect the operating system on a remote host via SSH.
+    
+    Args:
+        host: Hostname or IP address
+        user: SSH username
+    
+    Returns:
+        tuple: (os_name, os_version) e.g., ('ubuntu', '20.04') or ('windows', '10')
+        Returns (None, None) if detection fails
+    """
+    if is_localhost(host):
+        return detect_os_local()
+    
+    ssh = None
+    try:
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(host, username=user, timeout=10)
+        
+        # Try Windows detection first
+        stdin, stdout, stderr = ssh.exec_command(WINDOWS_DETECTION_COMMAND)
+        result = stdout.read().decode().strip().lower()
+        
+        if result == 'windows':
+            # Try to get Windows version
+            stdin, stdout, stderr = ssh.exec_command('powershell.exe -Command "[System.Environment]::OSVersion.Version.Major"')
+            version = stdout.read().decode().strip()
+            return ('windows', version if version else 'unknown')
+        
+        # Try Linux detection
+        stdin, stdout, stderr = ssh.exec_command("cat /etc/os-release 2>/dev/null")
+        os_release = stdout.read().decode()
+        
+        if os_release:
+            os_name = None
+            os_version = None
+            for line in os_release.split('\n'):
+                if line.startswith('ID='):
+                    os_name = line.split('=', 1)[1].strip('"').lower()
+                elif line.startswith('VERSION_ID='):
+                    os_version = line.split('=', 1)[1].strip('"')
+            
+            return (os_name, os_version) if os_name else (None, None)
+        
+        return (None, None)
+        
+    except Exception as e:
+        return (None, None)
+    finally:
+        if ssh:
+            ssh.close()
+
+def detect_os_local():
+    """
+    Detect the operating system on the local machine.
+    
+    Returns:
+        tuple: (os_name, os_version) e.g., ('ubuntu', '20.04') or ('windows', '10')
+        Returns (None, None) if detection fails
+    """
+    try:
+        current_platform = get_platform()
+        
+        if current_platform == 'windows':
+            # Windows detection
+            import platform
+            version = platform.version().split('.')[0] if platform.version() else 'unknown'
+            return ('windows', version)
+        else:
+            # Linux/Unix detection
+            if not os.path.exists('/etc/os-release'):
+                return (None, None)
+            
+            with open('/etc/os-release', 'r') as f:
+                os_name = None
+                os_version = None
+                for line in f:
+                    if line.startswith('ID='):
+                        os_name = line.split('=', 1)[1].strip('"').lower()
+                    elif line.startswith('VERSION_ID='):
+                        os_version = line.split('=', 1)[1].strip('"')
+                
+                return (os_name, os_version) if os_name else (None, None)
+    except Exception:
+        return (None, None)
+
 def get_update_command(distro, repo_only=False):
     """
     Get the update command for a given Linux distribution or Windows.

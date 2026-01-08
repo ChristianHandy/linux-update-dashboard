@@ -195,6 +195,36 @@ def dashboard():
     history = json.load(open("history.json"))
     status = {n: is_online(h["host"], h["user"]) for n, h in hosts.items()}
     
+    # Detect OS for each online host (with caching)
+    os_info = {}
+    for name, h in hosts.items():
+        if status[name]:  # Only detect for online hosts
+            # Check if OS info is cached in host data
+            if "os_name" in h and "os_version" in h:
+                os_info[name] = {
+                    "os_name": h["os_name"],
+                    "os_version": h["os_version"]
+                }
+            else:
+                # Detect OS and cache it
+                from updater import detect_os_remote
+                os_name, os_version = detect_os_remote(h["host"], h["user"])
+                if os_name:
+                    os_info[name] = {
+                        "os_name": os_name,
+                        "os_version": os_version or "unknown"
+                    }
+                    # Cache the detection result
+                    h["os_name"] = os_name
+                    h["os_version"] = os_version or "unknown"
+                    save_hosts(hosts)
+        elif "os_name" in h:
+            # Use cached OS info for offline hosts
+            os_info[name] = {
+                "os_name": h["os_name"],
+                "os_version": h.get("os_version", "unknown")
+            }
+    
     # Load update settings for display
     settings = scheduler.load_update_settings()
     
@@ -203,6 +233,7 @@ def dashboard():
         hosts=hosts, 
         status=status, 
         history=history,
+        os_info=os_info,
         auto_updates_enabled=settings.get("automatic_updates_enabled", False),
         update_frequency=settings.get("update_frequency", "daily"),
         last_auto_update=settings.get("last_auto_update")
@@ -529,6 +560,40 @@ def install_key(name):
         except Exception as e:
             error = f"Connection error: {e}"
     return render_template("install_key.html", name=name, error=error, success=success)
+
+# Detect/refresh OS on a host
+@app.route("/hosts/detect_os/<name>")
+@login_required
+def detect_host_os(name):
+    """Detect or refresh OS information for a host"""
+    # Require operator or admin role to detect OS
+    if session.get("user_id") and not current_user_has_role('operator', 'admin'):
+        flash('You need operator or admin role to detect OS.')
+        return redirect(url_for('manage_hosts'))
+    
+    hosts = load_hosts()
+    if name not in hosts:
+        flash('Host not found.')
+        return redirect(url_for('manage_hosts'))
+    
+    host_info = hosts[name]
+    
+    # Import detection function
+    from updater import detect_os_remote
+    
+    # Detect OS
+    os_name, os_version = detect_os_remote(host_info["host"], host_info["user"])
+    
+    if os_name:
+        # Update host with OS information
+        host_info["os_name"] = os_name
+        host_info["os_version"] = os_version or "unknown"
+        save_hosts(hosts)
+        flash(f'Detected OS: {os_name} {os_version or ""}')
+    else:
+        flash('Could not detect OS. Make sure the host is online and accessible.')
+    
+    return redirect(url_for('manage_hosts'))
 
 # ============================================================================
 # DISK TOOLS ROUTES (from Disk_Tools repository)
